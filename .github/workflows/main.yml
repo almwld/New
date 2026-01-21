@@ -1,0 +1,346 @@
+name: 🚀 Build Yemen Market
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 تحميل الكود
+      uses: actions/checkout@v4
+      
+    - name: ☕ تثبيت Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: 🛠️ إصلاح ملفات Gradle
+      run: |
+        # إنشاء ملفات Gradle الأساسية إذا كانت مفقودة
+        if [ ! -f "settings.gradle.kts" ]; then
+          echo 'rootProject.name = "YemenMarket"' > settings.gradle.kts
+          echo 'include(":app")' >> settings.gradle.kts
+        fi
+        
+        # إصلاح line endings
+        if [ -f "gradlew" ]; then
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+        fi
+        
+    - name: 📱 إنشاء هيكل مشروع السوق
+      run: |
+        # إنشاء الهيكل الأساسي
+        mkdir -p app/src/main/java/com/yemenmarket
+        mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/drawable
+        
+    - name: 📄 إنشاء ملفات التطبيق الأساسية
+      run: |
+        # 1. build.gradle.kts للتطبيق
+        cat > app/build.gradle.kts << 'EOF'
+        plugins {
+            id("com.android.application")
+            id("org.jetbrains.kotlin.android")
+        }
+        
+        android {
+            namespace = "com.yemenmarket"
+            compileSdk = 34
+            
+            defaultConfig {
+                applicationId = "com.yemenmarket"
+                minSdk = 21
+                targetSdk = 34
+                versionCode = 1
+                versionName = "1.0.0"
+            }
+            
+            buildTypes {
+                getByName("debug") {
+                    isMinifyEnabled = false
+                }
+                getByName("release") {
+                    isMinifyEnabled = false
+                }
+            }
+            
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_1_8
+                targetCompatibility = JavaVersion.VERSION_1_8
+            }
+        }
+        
+        dependencies {
+            implementation("androidx.core:core-ktx:1.12.0")
+            implementation("androidx.appcompat:appcompat:1.6.1")
+            implementation("com.google.android.material:material:1.11.0")
+            implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+        }
+        EOF
+        
+        # 2. AndroidManifest.xml
+        cat > app/src/main/AndroidManifest.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.yemenmarket">
+            
+            <uses-permission android:name="android.permission.INTERNET" />
+            
+            <application
+                android:name=".YemenMarketApp"
+                android:allowBackup="true"
+                android:icon="@drawable/ic_launcher"
+                android:label="@string/app_name"
+                android:theme="@style/Theme.YemenMarket"
+                android:supportsRtl="true">
+                
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true"
+                    android:windowSoftInputMode="adjustResize">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                
+                <activity android:name=".ProductsActivity" />
+                <activity android:name=".CartActivity" />
+                <activity android:name=".ProfileActivity" />
+                
+            </application>
+        </manifest>
+        EOF
+        
+        # 3. ملف الألوان والأنماط
+        cat > app/src/main/res/values/colors.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <color name="primary">#2E7D32</color>
+            <color name="primary_dark">#1B5E20</color>
+            <color name="accent">#FF9800</color>
+            <color name="white">#FFFFFF</color>
+            <color name="black">#000000</color>
+            <color name="gray">#9E9E9E</color>
+            <color name="background">#F5F5F5</color>
+            <color name="text_primary">#212121</color>
+            <color name="text_secondary">#757575</color>
+            <color name="success">#4CAF50</color>
+            <color name="error">#F44336</color>
+            <color name="warning">#FFC107</color>
+        </resources>
+        EOF
+        
+        cat > app/src/main/res/values/styles.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <style name="Theme.YemenMarket" parent="Theme.MaterialComponents.Light.NoActionBar">
+                <item name="colorPrimary">@color/primary</item>
+                <item name="colorPrimaryDark">@color/primary_dark</item>
+                <item name="colorAccent">@color/accent</item>
+                <item name="android:windowBackground">@color/background</item>
+                <item name="android:statusBarColor">@color/primary_dark</item>
+            </style>
+            
+            <style name="AppTitle" parent="TextAppearance.MaterialComponents.Headline5">
+                <item name="android:textColor">@color/primary</item>
+                <item name="android:textStyle">bold</item>
+            </style>
+            
+            <style name="ProductCard" parent="CardView">
+                <item name="cardCornerRadius">12dp</item>
+                <item name="cardElevation">4dp</item>
+            </style>
+        </resources>
+        EOF
+        
+        cat > app/src/main/res/values/strings.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <string name="app_name">سوق اليمن</string>
+            <string name="welcome">مرحباً بك في سوق اليمن</string>
+            <string name="products">المنتجات</string>
+            <string name="categories">الفئات</string>
+            <string name="cart">عربة التسوق</string>
+            <string name="profile">الملف الشخصي</string>
+            <string name="search">ابحث عن منتج...</string>
+            <string name="add_to_cart">أضف إلى السلة</string>
+            <string name="buy_now">اشتري الآن</string>
+            <string name="price">السعر</string>
+            <string name="ry">ريال يمني</string>
+            <string name="view_all">عرض الكل</string>
+            <string name="featured_products">منتجات مميزة</string>
+            <string name="recent_products">أحدث المنتجات</string>
+            <string name="login">تسجيل الدخول</string>
+            <string name="register">إنشاء حساب</string>
+        </resources>
+        EOF
+        
+        # 4. التخطيط الرئيسي
+        cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <androidx.constraintlayout.widget.ConstraintLayout 
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/background">
+            
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/primary"
+                app:title="@string/app_name"
+                app:titleTextColor="@color/white"
+                app:layout_constraintTop_toTopOf="parent" />
+            
+            <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/bottom_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/white"
+                app:menu="@menu/bottom_nav_menu"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+            
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/view_pager"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                app:layout_constraintTop_toBottomOf="@id/toolbar"
+                app:layout_constraintBottom_toTopOf="@id/bottom_navigation" />
+                
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        EOF
+        
+        # 5. قائمة التنقل السفلي
+        mkdir -p app/src/main/res/menu
+        cat > app/src/main/res/menu/bottom_nav_menu.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <menu xmlns:android="http://schemas.android.com/apk/res/android">
+            <item
+                android:id="@+id/nav_home"
+                android:icon="@drawable/ic_home"
+                android:title="@string/app_name" />
+            <item
+                android:id="@+id/nav_products"
+                android:icon="@drawable/ic_products"
+                android:title="@string/products" />
+            <item
+                android:id="@+id/nav_cart"
+                android:icon="@drawable/ic_cart"
+                android:title="@string/cart" />
+            <item
+                android:id="@+id/nav_profile"
+                android:icon="@drawable/ic_profile"
+                android:title="@string/profile" />
+        </menu>
+        EOF
+        
+        # 6. MainActivity.kt
+        cat > app/src/main/java/com/yemenmarket/MainActivity.kt << 'EOF'
+        package com.yemenmarket
+        
+        import android.os.Bundle
+        import androidx.appcompat.app.AppCompatActivity
+        import androidx.viewpager2.widget.ViewPager2
+        import com.google.android.material.bottomnavigation.BottomNavigationView
+        
+        class MainActivity : AppCompatActivity() {
+            
+            private lateinit var viewPager: ViewPager2
+            private lateinit var bottomNav: BottomNavigationView
+            
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_main)
+                
+                viewPager = findViewById(R.id.view_pager)
+                bottomNav = findViewById(R.id.bottom_navigation)
+                
+                setupViewPager()
+                setupBottomNavigation()
+            }
+            
+            private fun setupViewPager() {
+                // سيتم إضافة ViewPager Adapter هنا
+            }
+            
+            private fun setupBottomNavigation() {
+                bottomNav.setOnItemSelectedListener { item ->
+                    when (item.itemId) {
+                        R.id.nav_home -> {
+                            viewPager.currentItem = 0
+                            true
+                        }
+                        R.id.nav_products -> {
+                            viewPager.currentItem = 1
+                            true
+                        }
+                        R.id.nav_cart -> {
+                            viewPager.currentItem = 2
+                            true
+                        }
+                        R.id.nav_profile -> {
+                            viewPager.currentItem = 3
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            }
+        }
+        EOF
+        
+        # 7. YemenMarketApp.kt
+        cat > app/src/main/java/com/yemenmarket/YemenMarketApp.kt << 'EOF'
+        package com.yemenmarket
+        
+        import android.app.Application
+        
+        class YemenMarketApp : Application() {
+            override fun onCreate() {
+                super.onCreate()
+                // يمكن إضافة Firebase أو أي إعدادات أخرى هنا
+            }
+        }
+        EOF
+        
+    - name: 🔨 بناء التطبيق
+      run: |
+        # تأكد من وجود Gradle Wrapper
+        if [ ! -f "gradlew" ]; then
+          echo '#!/bin/bash' > gradlew
+          echo 'gradle "$@"' >> gradlew
+          chmod +x gradlew
+        fi
+        
+        # بناء الـ APK
+        ./gradlew :app:assembleDebug \
+          --no-daemon \
+          --stacktrace \
+          --warning-mode=all
+        
+    - name: 📤 رفع الـ APK الناتج
+      uses: actions/upload-artifact@v4
+      with:
+        name: yemen-market-apk
+        path: app/build/outputs/apk/debug/*.apk
+        
+    - name: 📊 معلومات البناء
+      if: always()
+      run: |
+        echo "✅ تم بناء Yemen Market بنجاح!"
+        echo "📱 إصدار التطبيق: 1.0.0"
+        echo "📦 API المستهدف: Android 14 (API 34)"
+        echo "🎯 الحد الأدنى: Android 5.0 (API 21)"
+        echo "📁 حجم الـ APK: $(ls -lh app/build/outputs/apk/debug/*.apk 2>/dev/null | awk '{print $5}' || echo 'جاري الإنشاء...')"
